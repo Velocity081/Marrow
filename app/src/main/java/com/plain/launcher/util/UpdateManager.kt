@@ -1,4 +1,4 @@
-﻿package com.plain.launcher.util
+package com.plain.launcher.util
 
 import android.content.Context
 import android.content.Intent
@@ -29,9 +29,16 @@ object UpdateManager {
 
     private const val GITHUB_OWNER = "Velocity081"
     private const val GITHUB_REPO = "Marrow"
-    private const val LATEST_RELEASE_URL = "https://api.github.com/repos/$GITHUB_OWNER/$GITHUB_REPO/releases/latest"
+    private const val RELEASES_URL = "https://api.github.com/repos/$GITHUB_OWNER/$GITHUB_REPO/releases"
+    private const val PREFS_NAME = "marrow_update_pref"
+    private const val KEY_INSTALLED_TAG = "installed_tag"
 
-    fun getCurrentVersion(context: Context): String {
+    fun getInstalledVersion(context: Context): String {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val savedTag = prefs.getString(KEY_INSTALLED_TAG, null)
+        if (!savedTag.isNullOrBlank()) {
+            return savedTag
+        }
         return try {
             val packageInfo = context.packageManager.getPackageInfo(context.packageName, 0)
             packageInfo.versionName ?: "1.0.0"
@@ -40,10 +47,21 @@ object UpdateManager {
         }
     }
 
+    fun getCurrentVersion(context: Context): String {
+        return getInstalledVersion(context)
+    }
+
+    fun recordInstalledVersion(context: Context, tag: String) {
+        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .edit()
+            .putString(KEY_INSTALLED_TAG, tag)
+            .apply()
+    }
+
     suspend fun checkForUpdates(context: Context): UpdateCheckResult = withContext(Dispatchers.IO) {
-        val currentVer = getCurrentVersion(context)
+        val currentVer = getInstalledVersion(context)
         try {
-            val url = URL(LATEST_RELEASE_URL)
+            val url = URL(RELEASES_URL)
             val connection = (url.openConnection() as HttpURLConnection).apply {
                 requestMethod = "GET"
                 setRequestProperty("Accept", "application/vnd.github.v3+json")
@@ -53,38 +71,49 @@ object UpdateManager {
             }
 
             val responseCode = connection.responseCode
-            if (responseCode == 404) {
-                // No releases published yet on GitHub repository
-                return@withContext UpdateCheckResult.UpToDate(currentVer)
-            }
-
             if (responseCode !in 200..299) {
                 return@withContext UpdateCheckResult.UpToDate(currentVer)
             }
 
             val responseText = connection.inputStream.bufferedReader().use { it.readText() }
-            val json = JSONObject(responseText)
-            val tagName = json.optString("tag_name", "").trim()
-            val releaseName = json.optString("name", tagName)
-            val releaseNotes = json.optString("body", "")
-            val assets = json.optJSONArray("assets")
+            val releases = org.json.JSONArray(responseText)
+            if (releases.length() == 0) {
+                return@withContext UpdateCheckResult.UpToDate(currentVer)
+            }
 
+            var latestRelease: JSONObject? = null
             var apkDownloadUrl: String? = null
-            if (assets != null) {
-                for (i in 0 until assets.length()) {
-                    val asset = assets.getJSONObject(i)
+
+            for (i in 0 until releases.length()) {
+                val rel = releases.getJSONObject(i)
+                if (rel.optBoolean("draft", false)) continue
+                val assets = rel.optJSONArray("assets") ?: continue
+                for (j in 0 until assets.length()) {
+                    val asset = assets.getJSONObject(j)
                     val name = asset.optString("name", "")
                     if (name.endsWith(".apk", ignoreCase = true)) {
                         apkDownloadUrl = asset.optString("browser_download_url")
+                        latestRelease = rel
                         break
                     }
                 }
+                if (latestRelease != null && !apkDownloadUrl.isNullOrBlank()) {
+                    break
+                }
             }
 
-            val remoteVer = tagName.removePrefix("v").trim()
-            val cleanCurrent = currentVer.removePrefix("v").trim()
+            if (latestRelease == null || apkDownloadUrl.isNullOrBlank()) {
+                return@withContext UpdateCheckResult.UpToDate(currentVer)
+            }
 
-            if (isNewer(remoteVer, cleanCurrent) && !apkDownloadUrl.isNullOrBlank()) {
+            val tagName = latestRelease.optString("tag_name", "").trim()
+            val releaseName = latestRelease.optString("name", tagName)
+            val releaseNotes = latestRelease.optString("body", "")
+
+            val remoteVer = tagName.removePrefix("v").removePrefix("V").trim()
+            val cleanCurrent = currentVer.removePrefix("v").removePrefix("V").trim()
+
+            if (isNewer(remoteVer, cleanCurrent)) {
                 UpdateCheckResult.UpdateAvailable(
                     currentVersion = currentVer,
                     latestVersion = remoteVer,
@@ -100,17 +129,51 @@ object UpdateManager {
         }
     }
 
-    private fun isNewer(remote: String, current: String): Boolean {
+    private data class ParsedVersion(
+        val mainParts: List<Int>,
+        val isPreRelease: Boolean,
+        val preReleaseNumber: Int
+    )
+
+    private fun parseVersion(v: String): ParsedVersion {
+        val clean = v.trim().removePrefix("v").removePrefix("V")
+        val parts = clean.split("-", limit = 2)
+        val mainParts = parts[0].split(".").mapNotNull { it.toIntOrNull() }
+
+        val preStr = if (parts.size > 1) parts[1] else ""
+        val isPre = preStr.isNotBlank()
+        val preNum = Regex("\\d+").find(preStr)?.value?.toIntOrNull() ?: 0
+
+        return ParsedVersion(mainParts, isPre, preNum)
+    }
+
+    fun isNewer(remote: String, current: String): Boolean {
         if (remote.isBlank()) return false
-        val rParts = remote.split(".").mapNotNull { it.filter { ch -> ch.isDigit() }.toIntOrNull() }
-        val cParts = current.split(".").mapNotNull { it.filter { ch -> ch.isDigit() }.toIntOrNull() }
-        val maxLen = maxOf(rParts.size, cParts.size)
-        for (i in 0 until maxLen) {
-            val rVal = rParts.getOrElse(i) { 0 }
-            val cVal = cParts.getOrElse(i) { 0 }
-            if (rVal > cVal) return true
-            if (rVal < cVal) return false
+        val cleanRemote = remote.trim().removePrefix("v").removePrefix("V")
+        val cleanCurrent = current.trim().removePrefix("v").removePrefix("V")
+
+        if (cleanRemote.equals(cleanCurrent, ignoreCase = true)) return false
+
+        val r = parseVersion(cleanRemote)
+        val c = parseVersion(cleanCurrent)
+
+        val maxParts = maxOf(r.mainParts.size, c.mainParts.size)
+        for (i in 0 until maxParts) {
+            val rVal = r.mainParts.getOrElse(i) { 0 }
+            val cVal = c.mainParts.getOrElse(i) { 0 }
+            if (rVal != cVal) return rVal > cVal
         }
+
+        if (c.isPreRelease && r.isPreRelease) {
+            return r.preReleaseNumber > c.preReleaseNumber
+        }
+        if (c.isPreRelease && !r.isPreRelease) {
+            return true
+        }
+        if (!c.isPreRelease && r.isPreRelease) {
+            return r.preReleaseNumber > 0
+        }
+
         return false
     }
 
@@ -163,7 +226,10 @@ object UpdateManager {
         targetFile
     }
 
-    fun installApk(context: Context, apkFile: File) {
+    fun installApk(context: Context, apkFile: File, newVersionTag: String? = null) {
+        if (!newVersionTag.isNullOrBlank()) {
+            recordInstalledVersion(context, newVersionTag)
+        }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             if (!context.packageManager.canRequestPackageInstalls()) {
                 try {

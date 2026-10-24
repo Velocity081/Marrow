@@ -1548,8 +1548,6 @@ private fun AboutPageContent(context: Context) {
     var downloadProgress by remember { mutableFloatStateOf(0f) }
     var statusMessage by remember { mutableStateOf<String?>(null) }
 
-    val currentVersion = remember { UpdateManager.getCurrentVersion(context) }
-
     LaunchedEffect(Unit) {
         isChecking = true
         checkResult = UpdateManager.checkForUpdates(context)
@@ -1574,10 +1572,6 @@ private fun AboutPageContent(context: Context) {
         }
     }
 
-    val androidVersion = remember {
-        "Android ${android.os.Build.VERSION.RELEASE} (API ${android.os.Build.VERSION.SDK_INT})"
-    }
-
     val processor = remember { DeviceInfoUtil.getProcessorName() }
     val ram = remember { DeviceInfoUtil.getTotalRam(context) }
     val storage = remember { DeviceInfoUtil.getMaxStorage(context) }
@@ -1597,7 +1591,7 @@ private fun AboutPageContent(context: Context) {
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         PlainText(
-                            text = "version $currentVersion",
+                            text = "Marrow 17 Beta",
                             fontSize = 16.sp,
                             fontWeight = FontWeight.SemiBold,
                             color = PlainTheme.colors.onBackground
@@ -1620,7 +1614,7 @@ private fun AboutPageContent(context: Context) {
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         PlainText(
-                            text = "version $currentVersion",
+                            text = "Marrow 17 Beta",
                             fontSize = 16.sp,
                             fontWeight = FontWeight.SemiBold,
                             color = PlainTheme.colors.onBackground
@@ -1664,7 +1658,7 @@ private fun AboutPageContent(context: Context) {
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         PlainText(
-                            text = "version $currentVersion",
+                            text = "Marrow 17 Beta",
                             fontSize = 16.sp,
                             fontWeight = FontWeight.SemiBold,
                             color = PlainTheme.colors.onBackground
@@ -1700,7 +1694,7 @@ private fun AboutPageContent(context: Context) {
                                     downloadProgress = progress
                                 }
                                 statusMessage = "opening installer..."
-                                UpdateManager.installApk(context, file)
+                                UpdateManager.installApk(context, file, avail.latestVersion)
                             } catch (e: Exception) {
                                 statusMessage = "download failed: ${e.message}"
                             } finally {
@@ -1737,18 +1731,11 @@ private fun AboutPageContent(context: Context) {
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // 2. Main card (device, android, processor, ram, storage) with launcher version removed
+        // 2. Main card (device, processor, ram, storage) with launcher and android versions removed
         PlainSettingsCard {
             PlainTextRow(
                 title = "device",
                 valueText = deviceName
-            )
-
-            PlainListDivider()
-
-            PlainTextRow(
-                title = "android",
-                valueText = androidVersion
             )
 
             PlainListDivider()
