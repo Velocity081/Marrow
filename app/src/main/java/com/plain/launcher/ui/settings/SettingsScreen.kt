@@ -941,22 +941,7 @@ fun SettingsScreen(
 
                                         Spacer(modifier = Modifier.height(8.dp))
 
-                                        // 2. Manage limits row
-                                        PlainSettingsCard {
-                                            PlainTextRow(
-                                                title = "app limits & digital wellbeing",
-                                                valueText = ">",
-                                                titleFontSize = 16.sp,
-                                                titleFontWeight = FontWeight.Normal,
-                                                onClick = {
-                                                    ScreenTimeUtil.openDigitalWellbeingOrSettings(context)
-                                                }
-                                            )
-                                        }
-
-                                        Spacer(modifier = Modifier.height(8.dp))
-
-                                        // 3. List of apps with icon, name, screen time today, and chevron
+                                        // List of apps with icon, name, screen time today, and chevron
                                         PlainSettingsCard {
                                             if (!screenTimeInfo.hasPermission) {
                                                 PlainTextRow(
