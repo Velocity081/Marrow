@@ -131,8 +131,7 @@ enum class SettingsCategory(val title: String) {
     ACCESSIBILITY("accessibility"),
     BACKUP("backup & restore"),
     ABOUT("about"),
-    MARROW_TOOLS("marrow tools"),
-    LAUNCHER_UPDATES("launcher updates")
+    MARROW_TOOLS("marrow tools")
 }
 
 sealed class SettingsNavLevel(val depth: Int) {
@@ -638,14 +637,11 @@ fun SettingsScreen(
 
                     is SettingsNavLevel.CategoryDetail -> {
                         val currentCategory = navLevel.category
-                        if (currentCategory == SettingsCategory.LAUNCHER_UPDATES) {
-                            LauncherUpdatesSubPage(context = context)
-                        } else {
-                            LazyColumn(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .background(PlainTheme.colors.background)
-                            ) {
+                        LazyColumn(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(PlainTheme.colors.background)
+                        ) {
                                 item {
                                     Spacer(modifier = Modifier.height(8.dp))
                                 }
@@ -1415,75 +1411,7 @@ fun SettingsScreen(
 
                                 SettingsCategory.ABOUT -> {
                                     item {
-                                        val deviceName = remember {
-                                            val customName = try {
-                                                android.provider.Settings.Global.getString(
-                                                    context.contentResolver,
-                                                    "device_name"
-                                                )
-                                            } catch (e: Exception) {
-                                                null
-                                            }
-                                            if (!customName.isNullOrBlank()) {
-                                                customName
-                                            } else {
-                                                val manufacturer = android.os.Build.MANUFACTURER.replaceFirstChar { it.uppercase() }
-                                                val model = android.os.Build.MODEL
-                                                if (model.startsWith(manufacturer, ignoreCase = true)) model else "$manufacturer $model"
-                                            }
-                                        }
-
-                                        val androidVersion = remember {
-                                            "Android ${android.os.Build.VERSION.RELEASE} (API ${android.os.Build.VERSION.SDK_INT})"
-                                        }
-
-                                        val processor = remember { DeviceInfoUtil.getProcessorName() }
-                                        val ram = remember { DeviceInfoUtil.getTotalRam(context) }
-                                        val storage = remember { DeviceInfoUtil.getMaxStorage(context) }
-
-                                        PlainSectionHeader(title = "about", isFirst = true)
-
-                                        PlainSettingsCard {
-                                            PlainTextRow(
-                                                title = "launcher",
-                                                valueText = "Marrow 1.0.0"
-                                            )
-
-                                            PlainListDivider()
-
-                                            PlainTextRow(
-                                                title = "device",
-                                                valueText = deviceName
-                                            )
-
-                                            PlainListDivider()
-
-                                            PlainTextRow(
-                                                title = "android",
-                                                valueText = androidVersion
-                                            )
-
-                                            PlainListDivider()
-
-                                            PlainTextRow(
-                                                title = "processor",
-                                                valueText = processor
-                                            )
-
-                                            PlainListDivider()
-
-                                            PlainTextRow(
-                                                title = "ram",
-                                                valueText = ram
-                                            )
-
-                                            PlainListDivider()
-
-                                            PlainTextRow(
-                                                title = "storage",
-                                                valueText = storage
-                                            )
-                                        }
+                                        AboutPageContent(context = context)
                                     }
                                 }
 
@@ -1501,10 +1429,6 @@ fun SettingsScreen(
                                         }
                                     }
                                 }
-
-                                SettingsCategory.LAUNCHER_UPDATES -> {
-                                    // Handled above in LauncherUpdatesSubPage
-                                }
                             }
 
                             item {
@@ -1516,7 +1440,6 @@ fun SettingsScreen(
             }
         }
     }
-}
 
         // Reset confirmation dialog
         if (showResetDialog) {
@@ -1617,7 +1540,7 @@ fun SettingsScreen(
 }
 
 @Composable
-private fun LauncherUpdatesSubPage(context: Context) {
+private fun AboutPageContent(context: Context) {
     val scope = rememberCoroutineScope()
     var checkResult by remember { mutableStateOf<UpdateCheckResult?>(null) }
     var isChecking by remember { mutableStateOf(true) }
@@ -1633,141 +1556,138 @@ private fun LauncherUpdatesSubPage(context: Context) {
         isChecking = false
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(PlainTheme.colors.background)
-    ) {
-        LazyColumn(
-            modifier = Modifier
-                .weight(1f)
-                .fillMaxWidth()
-        ) {
-            item {
-                Spacer(modifier = Modifier.height(12.dp))
-            }
+    val deviceName = remember {
+        val customName = try {
+            android.provider.Settings.Global.getString(
+                context.contentResolver,
+                "device_name"
+            )
+        } catch (e: Exception) {
+            null
+        }
+        if (!customName.isNullOrBlank()) {
+            customName
+        } else {
+            val manufacturer = android.os.Build.MANUFACTURER.replaceFirstChar { it.uppercase() }
+            val model = android.os.Build.MODEL
+            if (model.startsWith(manufacturer, ignoreCase = true)) model else "$manufacturer $model"
+        }
+    }
 
-            item {
-                PlainSectionHeader(title = "launcher updates", isFirst = true)
+    val androidVersion = remember {
+        "Android ${android.os.Build.VERSION.RELEASE} (API ${android.os.Build.VERSION.SDK_INT})"
+    }
 
-                PlainSettingsCard {
-                    when {
-                        isChecking -> {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 20.dp, vertical = 18.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                PlainText(
-                                    text = "version $currentVersion",
-                                    fontSize = 16.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = PlainTheme.colors.onBackground
-                                )
-                                PlainText(
-                                    text = "checking...",
-                                    fontSize = 15.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = PlainTheme.colors.secondaryText
-                                )
-                            }
-                        }
-                        checkResult is UpdateCheckResult.UpdateAvailable -> {
-                            val avail = checkResult as UpdateCheckResult.UpdateAvailable
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 20.dp, vertical = 18.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                PlainText(
-                                    text = "version $currentVersion",
-                                    fontSize = 16.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = PlainTheme.colors.onBackground
-                                )
-                                PlainText(
-                                    text = "v${avail.latestVersion} available",
-                                    fontSize = 15.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = Color(0xFFFFD600)
-                                )
-                            }
-                            if (avail.releaseNotes.isNotBlank()) {
-                                PlainListDivider()
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(horizontal = 20.dp, vertical = 14.dp)
-                                ) {
-                                    PlainText(
-                                        text = avail.releaseNotes,
-                                        fontSize = 13.sp,
-                                        color = PlainTheme.colors.secondaryText
-                                    )
-                                }
-                            }
-                        }
-                        else -> {
-                            // Up to date
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 20.dp, vertical = 18.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                PlainText(
-                                    text = "version $currentVersion",
-                                    fontSize = 16.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = PlainTheme.colors.onBackground
-                                )
-                                PlainText(
-                                    text = "up to date",
-                                    fontSize = 15.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = PlainTheme.colors.secondaryText
-                                )
-                            }
+    val processor = remember { DeviceInfoUtil.getProcessorName() }
+    val ram = remember { DeviceInfoUtil.getTotalRam(context) }
+    val storage = remember { DeviceInfoUtil.getMaxStorage(context) }
+
+    Column(modifier = Modifier.fillMaxWidth()) {
+        PlainSectionHeader(title = "about", isFirst = true)
+
+        // 1. Update card at the top
+        PlainSettingsCard {
+            when {
+                isChecking -> {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 20.dp, vertical = 18.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        PlainText(
+                            text = "version $currentVersion",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = PlainTheme.colors.onBackground
+                        )
+                        PlainText(
+                            text = "checking...",
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = PlainTheme.colors.secondaryText
+                        )
+                    }
+                }
+                checkResult is UpdateCheckResult.UpdateAvailable -> {
+                    val avail = checkResult as UpdateCheckResult.UpdateAvailable
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 20.dp, vertical = 18.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        PlainText(
+                            text = "version $currentVersion",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = PlainTheme.colors.onBackground
+                        )
+                        PlainText(
+                            text = "v${avail.latestVersion} available",
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color(0xFFFFD600)
+                        )
+                    }
+                    if (avail.releaseNotes.isNotBlank()) {
+                        PlainListDivider()
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 20.dp, vertical = 14.dp)
+                        ) {
+                            PlainText(
+                                text = avail.releaseNotes,
+                                fontSize = 13.sp,
+                                color = PlainTheme.colors.secondaryText
+                            )
                         }
                     }
                 }
-            }
-
-            if (!statusMessage.isNullOrBlank()) {
-                item {
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Box(
+                else -> {
+                    // Up to date
+                    Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 20.dp),
-                        contentAlignment = Alignment.Center
+                            .clickable(enabled = !isChecking && !isDownloading) {
+                                scope.launch {
+                                    isChecking = true
+                                    checkResult = UpdateManager.checkForUpdates(context)
+                                    isChecking = false
+                                }
+                            }
+                            .padding(horizontal = 20.dp, vertical = 18.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
                         PlainText(
-                            text = statusMessage!!,
-                            fontSize = 13.sp,
+                            text = "version $currentVersion",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = PlainTheme.colors.onBackground
+                        )
+                        PlainText(
+                            text = "up to date",
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.SemiBold,
                             color = PlainTheme.colors.secondaryText
                         )
                     }
                 }
             }
-
-            item {
-                Spacer(modifier = Modifier.height(16.dp))
-            }
         }
 
-        // "otherwise add a "update" button to the bottom matching the plus button in the notespace."
+        // Action button if update available
         if (checkResult is UpdateCheckResult.UpdateAvailable) {
             val avail = checkResult as UpdateCheckResult.UpdateAvailable
+            Spacer(modifier = Modifier.height(10.dp))
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 24.dp, vertical = 18.dp)
+                    .padding(horizontal = 16.dp)
                     .height(56.dp)
                     .clip(CircleShape)
                     .background(PlainTheme.colors.surface)
@@ -1797,6 +1717,60 @@ private fun LauncherUpdatesSubPage(context: Context) {
                     color = PlainTheme.colors.onBackground
                 )
             }
+        }
+
+        if (!statusMessage.isNullOrBlank()) {
+            Spacer(modifier = Modifier.height(8.dp))
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                PlainText(
+                    text = statusMessage!!,
+                    fontSize = 13.sp,
+                    color = PlainTheme.colors.secondaryText
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // 2. Main card (device, android, processor, ram, storage) with launcher version removed
+        PlainSettingsCard {
+            PlainTextRow(
+                title = "device",
+                valueText = deviceName
+            )
+
+            PlainListDivider()
+
+            PlainTextRow(
+                title = "android",
+                valueText = androidVersion
+            )
+
+            PlainListDivider()
+
+            PlainTextRow(
+                title = "processor",
+                valueText = processor
+            )
+
+            PlainListDivider()
+
+            PlainTextRow(
+                title = "ram",
+                valueText = ram
+            )
+
+            PlainListDivider()
+
+            PlainTextRow(
+                title = "storage",
+                valueText = storage
+            )
         }
     }
 }
