@@ -134,7 +134,7 @@ fun AppDrawerScreen(
                     )
                 }
 
-                Spacer(modifier = Modifier.width(16.dp))
+                Spacer(modifier = Modifier.weight(1f))
 
                 Box(
                     modifier = Modifier
