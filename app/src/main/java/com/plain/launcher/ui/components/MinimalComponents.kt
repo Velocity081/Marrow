@@ -255,6 +255,7 @@ fun PlainTextRow(
     subtitle: String? = null,
     valueText: String? = null,
     leadingIcon: (@Composable () -> Unit)? = null,
+    showChevron: Boolean = false,
     onClick: (() -> Unit)? = null,
     titleFontSize: TextUnit = 15.sp,
     titleFontWeight: FontWeight = FontWeight.Medium,
@@ -305,13 +306,25 @@ fun PlainTextRow(
                 }
             }
         }
-        if (!valueText.isNullOrBlank()) {
-            Spacer(modifier = Modifier.width(16.dp))
-            PlainText(
-                text = valueText,
-                color = PlainTheme.colors.secondaryText,
-                fontSize = 14.sp
-            )
+        Row(
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            if (!valueText.isNullOrBlank()) {
+                Spacer(modifier = Modifier.width(16.dp))
+                PlainText(
+                    text = valueText,
+                    color = PlainTheme.colors.secondaryText,
+                    fontSize = 14.sp
+                )
+            }
+            if (showChevron) {
+                Spacer(modifier = Modifier.width(8.dp))
+                PlainText(
+                    text = ">",
+                    color = PlainTheme.colors.secondaryText,
+                    fontSize = 14.sp
+                )
+            }
         }
     }
 }

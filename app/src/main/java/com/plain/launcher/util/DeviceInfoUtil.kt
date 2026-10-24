@@ -116,4 +116,30 @@ object DeviceInfoUtil {
             "Unknown"
         }
     }
+
+    fun getAvailableStorage(context: Context): String {
+        return try {
+            var freeBytes: Long = 0L
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                try {
+                    val storageStats = context.getSystemService(Context.STORAGE_STATS_SERVICE) as? StorageStatsManager
+                    freeBytes = storageStats?.getFreeBytes(StorageManager.UUID_DEFAULT) ?: 0L
+                } catch (_: Exception) {}
+            }
+
+            if (freeBytes <= 0L) {
+                try {
+                    val stat = StatFs(Environment.getDataDirectory().path)
+                    freeBytes = stat.availableBlocksLong * stat.blockSizeLong
+                } catch (_: Exception) {}
+            }
+
+            if (freeBytes <= 0L) return "Unknown"
+
+            Formatter.formatFileSize(context, freeBytes)
+        } catch (_: Exception) {
+            "Unknown"
+        }
+    }
 }

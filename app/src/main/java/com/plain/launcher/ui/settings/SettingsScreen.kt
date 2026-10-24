@@ -1411,7 +1411,10 @@ fun SettingsScreen(
 
                                 SettingsCategory.ABOUT -> {
                                     item {
-                                        AboutPageContent(context = context)
+                                        AboutPageContent(
+                                            context = context,
+                                            onNavigateToCategory = { selectedCategory = it }
+                                        )
                                     }
                                 }
 
@@ -1540,7 +1543,10 @@ fun SettingsScreen(
 }
 
 @Composable
-private fun AboutPageContent(context: Context) {
+private fun AboutPageContent(
+    context: Context,
+    onNavigateToCategory: (SettingsCategory) -> Unit
+) {
     val scope = rememberCoroutineScope()
     var checkResult by remember { mutableStateOf<UpdateCheckResult?>(null) }
     var isChecking by remember { mutableStateOf(true) }
@@ -1574,7 +1580,17 @@ private fun AboutPageContent(context: Context) {
 
     val processor = remember { DeviceInfoUtil.getProcessorName() }
     val ram = remember { DeviceInfoUtil.getTotalRam(context) }
-    val storage = remember { DeviceInfoUtil.getMaxStorage(context) }
+    val storage = remember {
+        val available = DeviceInfoUtil.getAvailableStorage(context)
+        val max = DeviceInfoUtil.getMaxStorage(context)
+        if (available != "Unknown" && max != "Unknown") {
+            "$available available / $max"
+        } else if (available != "Unknown") {
+            "$available available"
+        } else {
+            max
+        }
+    }
 
     Column(modifier = Modifier.fillMaxWidth()) {
         PlainSectionHeader(title = "about", isFirst = true)
@@ -1760,7 +1776,9 @@ private fun AboutPageContent(context: Context) {
 
             PlainTextRow(
                 title = "storage",
-                valueText = storage
+                valueText = storage,
+                showChevron = true,
+                onClick = { onNavigateToCategory(SettingsCategory.DEVICE_STORAGE) }
             )
         }
     }
