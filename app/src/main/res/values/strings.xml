@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">Marrow (Beta)</string>
+    <string name="device_admin_description">Enables Marrow to lock the screen via double-tap or gesture.</string>
+</resources>

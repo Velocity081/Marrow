@@ -1,0 +1,13 @@
+<resources>
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+    <color name="gray_10">#FF1A1A1A</color>
+    <color name="gray_20">#FF333333</color>
+    <color name="gray_30">#FF4D4D4D</color>
+    <color name="gray_40">#FF666666</color>
+    <color name="gray_50">#FF808080</color>
+    <color name="gray_60">#FF999999</color>
+    <color name="gray_70">#FFB3B3B3</color>
+    <color name="gray_80">#FFCCCCCC</color>
+    <color name="gray_90">#FFE5E5E5</color>
+</resources>
