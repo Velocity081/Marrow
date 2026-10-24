@@ -679,6 +679,21 @@ private fun NoteEditorSubPage(
     val fontFamily = getAppFontFamily(selectedFont)
 
     val isDark = PlainTheme.colors.background.luminance() < 0.5f
+    val fieldBg = if (isDark) {
+        Color(
+            red = (PlainTheme.colors.surface.red * 0.52f).coerceAtLeast(0.04f),
+            green = (PlainTheme.colors.surface.green * 0.52f).coerceAtLeast(0.04f),
+            blue = (PlainTheme.colors.surface.blue * 0.52f).coerceAtLeast(0.04f),
+            alpha = 1f
+        )
+    } else {
+        Color(
+            red = (PlainTheme.colors.surface.red * 0.88f),
+            green = (PlainTheme.colors.surface.green * 0.88f),
+            blue = (PlainTheme.colors.surface.blue * 0.88f),
+            alpha = 1f
+        )
+    }
     val cardBg = if (isDark) {
         PlainTheme.colors.onBackground.copy(alpha = 0.08f)
     } else {
@@ -699,7 +714,7 @@ private fun NoteEditorSubPage(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(14.dp))
-                .background(PlainTheme.colors.surface)
+                .background(fieldBg)
                 .padding(horizontal = 16.dp, vertical = 14.dp)
         ) {
             if (title.isEmpty()) {
@@ -733,7 +748,7 @@ private fun NoteEditorSubPage(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(16.dp))
-                .background(PlainTheme.colors.surface)
+                .background(fieldBg)
                 .padding(horizontal = 16.dp, vertical = 16.dp)
         ) {
             if (text.isEmpty()) {
@@ -755,7 +770,7 @@ private fun NoteEditorSubPage(
                 cursorBrush = SolidColor(PlainTheme.colors.onBackground),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(min = 160.dp, max = 360.dp)
+                    .heightIn(min = 400.dp, max = 900.dp)
             )
         }
 
