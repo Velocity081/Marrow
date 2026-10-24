@@ -17,8 +17,6 @@
 - **Quick Gesture Access**: Bind Notespace to any launcher gesture (e.g., swipe down) for instant access.
 
 ### Priority Alerts
-- **Hardware & Edge Alerts**: Never miss critical communications with customizable edge glow animations and torch flash.
-- **Phone-Matched Bezels**: Adjustable edge glow corner radius slider to seamlessly match your device’s screen curves.
-- **Rule Engine**: Filter incoming alerts by specific apps and message keywords with tailored glow colors.
+- **Hardware & Edge Alerts**: Never miss important notifications with customisable edge glow and torch flashes.
 - **Priority Widget**: Dedicated yellow priority indicator on your home screen displaying unread urgent alerts.
 
