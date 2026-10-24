@@ -20,3 +20,5 @@
 - **Hardware & Edge Alerts**: Never miss important notifications with customisable edge glow and torch flashes.
 - **Priority Widget**: Dedicated yellow priority indicator on your home screen displaying unread urgent alerts.
 
+## ! Beta !
+**Marrow** is currently under development, with more features rolling out for full release. The launcher is **NOT** expected to be available through the google play store any time in the near future, with updates available within the launcher itself.
