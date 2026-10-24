@@ -198,14 +198,19 @@ object UpdateManager {
                 connection.disconnect()
                 currentUrl = loc
                 redirectCount++
-            } else {
+            } else if (code in 200..299) {
                 break
+            } else {
+                throw IllegalStateException("HTTP $code")
             }
         }
 
         val totalBytes = connection.contentLength.toFloat()
         val updatesDir = File(context.cacheDir, "updates").apply { mkdirs() }
         val targetFile = File(updatesDir, "marrow_update.apk")
+        if (targetFile.exists()) {
+            targetFile.delete()
+        }
 
         connection.inputStream.use { input ->
             targetFile.outputStream().use { output ->
@@ -223,6 +228,7 @@ object UpdateManager {
             }
         }
 
+        targetFile.setReadable(true, false)
         targetFile
     }
 
@@ -265,6 +271,8 @@ object UpdateManager {
             recordInstalledVersion(context, newVersionTag)
         }
 
+        apkFile.setReadable(true, false)
+
         val contentUri = FileProvider.getUriForFile(
             context,
             "${context.packageName}.fileprovider",
@@ -275,7 +283,15 @@ object UpdateManager {
             setDataAndType(contentUri, "application/vnd.android.package-archive")
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
         }
+
+        val resolveInfoList = context.packageManager.queryIntentActivities(installIntent, 0)
+        for (resolveInfo in resolveInfoList) {
+            val pkg = resolveInfo.activityInfo.packageName
+            context.grantUriPermission(pkg, contentUri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+
         context.startActivity(installIntent)
         return true
     }
