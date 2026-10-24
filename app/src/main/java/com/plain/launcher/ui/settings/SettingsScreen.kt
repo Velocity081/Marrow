@@ -40,9 +40,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import com.plain.launcher.util.UpdateCheckResult
+import com.plain.launcher.util.UpdateManager
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
@@ -128,7 +131,8 @@ enum class SettingsCategory(val title: String) {
     ACCESSIBILITY("accessibility"),
     BACKUP("backup & restore"),
     ABOUT("about"),
-    MARROW_TOOLS("marrow tools")
+    MARROW_TOOLS("marrow tools"),
+    LAUNCHER_UPDATES("launcher updates")
 }
 
 sealed class SettingsNavLevel(val depth: Int) {
@@ -634,16 +638,19 @@ fun SettingsScreen(
 
                     is SettingsNavLevel.CategoryDetail -> {
                         val currentCategory = navLevel.category
-                        LazyColumn(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .background(PlainTheme.colors.background)
-                        ) {
-                            item {
-                                Spacer(modifier = Modifier.height(8.dp))
-                            }
+                        if (currentCategory == SettingsCategory.LAUNCHER_UPDATES) {
+                            LauncherUpdatesSubPage(context = context)
+                        } else {
+                            LazyColumn(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(PlainTheme.colors.background)
+                            ) {
+                                item {
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                }
 
-                            when (currentCategory) {
+                                when (currentCategory) {
                                 SettingsCategory.APPEARANCE -> {
                                     item {
                                         HomeScreenPreview(
@@ -1375,7 +1382,6 @@ fun SettingsScreen(
                                             PlainTextToggle(
                                                 title = "haptic feedback",
                                                 checked = settings.enableHapticFeedback,
-                                                subtitle = "vibrations on controls, gestures and long-press",
                                                 onCheckedChange = { viewModel.updateSettings(settings.copy(enableHapticFeedback = it)) }
                                             )
 
@@ -1384,7 +1390,6 @@ fun SettingsScreen(
                                             PlainTextToggle(
                                                 title = "animations",
                                                 checked = settings.enableAnimations,
-                                                subtitle = "screen transitions and control animations",
                                                 onCheckedChange = { viewModel.updateSettings(settings.copy(enableAnimations = it)) }
                                             )
                                         }
@@ -1511,6 +1516,10 @@ fun SettingsScreen(
                                         }
                                     }
                                 }
+
+                                SettingsCategory.LAUNCHER_UPDATES -> {
+                                    // Handled above in LauncherUpdatesSubPage
+                                }
                             }
 
                             item {
@@ -1522,6 +1531,7 @@ fun SettingsScreen(
             }
         }
     }
+}
 
         // Reset confirmation dialog
         if (showResetDialog) {
@@ -1617,6 +1627,191 @@ fun SettingsScreen(
                     showRuleWindow = false
                 }
             )
+        }
+    }
+}
+
+@Composable
+private fun LauncherUpdatesSubPage(context: Context) {
+    val scope = rememberCoroutineScope()
+    var checkResult by remember { mutableStateOf<UpdateCheckResult?>(null) }
+    var isChecking by remember { mutableStateOf(true) }
+    var isDownloading by remember { mutableStateOf(false) }
+    var downloadProgress by remember { mutableFloatStateOf(0f) }
+    var statusMessage by remember { mutableStateOf<String?>(null) }
+
+    val currentVersion = remember { UpdateManager.getCurrentVersion(context) }
+
+    LaunchedEffect(Unit) {
+        isChecking = true
+        checkResult = UpdateManager.checkForUpdates(context)
+        isChecking = false
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(PlainTheme.colors.background)
+    ) {
+        LazyColumn(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth()
+        ) {
+            item {
+                Spacer(modifier = Modifier.height(12.dp))
+            }
+
+            item {
+                PlainSectionHeader(title = "launcher updates", isFirst = true)
+
+                PlainSettingsCard {
+                    when {
+                        isChecking -> {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 20.dp, vertical = 18.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                PlainText(
+                                    text = "version $currentVersion",
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = PlainTheme.colors.onBackground
+                                )
+                                PlainText(
+                                    text = "checking...",
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = PlainTheme.colors.secondaryText
+                                )
+                            }
+                        }
+                        checkResult is UpdateCheckResult.UpdateAvailable -> {
+                            val avail = checkResult as UpdateCheckResult.UpdateAvailable
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 20.dp, vertical = 18.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                PlainText(
+                                    text = "version $currentVersion",
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = PlainTheme.colors.onBackground
+                                )
+                                PlainText(
+                                    text = "v${avail.latestVersion} available",
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = Color(0xFFFFD600)
+                                )
+                            }
+                            if (avail.releaseNotes.isNotBlank()) {
+                                PlainListDivider()
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 20.dp, vertical = 14.dp)
+                                ) {
+                                    PlainText(
+                                        text = avail.releaseNotes,
+                                        fontSize = 13.sp,
+                                        color = PlainTheme.colors.secondaryText
+                                    )
+                                }
+                            }
+                        }
+                        else -> {
+                            // Up to date
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 20.dp, vertical = 18.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                PlainText(
+                                    text = "version $currentVersion",
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = PlainTheme.colors.onBackground
+                                )
+                                PlainText(
+                                    text = "up to date",
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = PlainTheme.colors.secondaryText
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (!statusMessage.isNullOrBlank()) {
+                item {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 20.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        PlainText(
+                            text = statusMessage!!,
+                            fontSize = 13.sp,
+                            color = PlainTheme.colors.secondaryText
+                        )
+                    }
+                }
+            }
+
+            item {
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+        }
+
+        // "otherwise add a "update" button to the bottom matching the plus button in the notespace."
+        if (checkResult is UpdateCheckResult.UpdateAvailable) {
+            val avail = checkResult as UpdateCheckResult.UpdateAvailable
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp, vertical = 18.dp)
+                    .height(56.dp)
+                    .clip(CircleShape)
+                    .background(PlainTheme.colors.surface)
+                    .clickable(enabled = !isDownloading) {
+                        scope.launch {
+                            isDownloading = true
+                            statusMessage = "downloading update..."
+                            try {
+                                val file = UpdateManager.downloadApk(context, avail.downloadUrl) { progress ->
+                                    downloadProgress = progress
+                                }
+                                statusMessage = "opening installer..."
+                                UpdateManager.installApk(context, file)
+                            } catch (e: Exception) {
+                                statusMessage = "download failed: ${e.message}"
+                            } finally {
+                                isDownloading = false
+                            }
+                        }
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                PlainText(
+                    text = if (isDownloading) "downloading ${(downloadProgress * 100).toInt()}%" else "update",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = PlainTheme.colors.onBackground
+                )
+            }
         }
     }
 }
