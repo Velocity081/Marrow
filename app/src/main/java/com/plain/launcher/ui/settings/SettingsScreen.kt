@@ -1693,8 +1693,12 @@ private fun AboutPageContent(context: Context) {
                                 val file = UpdateManager.downloadApk(context, avail.downloadUrl) { progress ->
                                     downloadProgress = progress
                                 }
-                                statusMessage = "opening installer..."
-                                UpdateManager.installApk(context, file, avail.latestVersion)
+                                val installed = UpdateManager.installApk(context, file, avail.latestVersion)
+                                if (!installed) {
+                                    statusMessage = "allow install permission and tap update again"
+                                } else {
+                                    statusMessage = null
+                                }
                             } catch (e: Exception) {
                                 statusMessage = "download failed: ${e.message}"
                             } finally {

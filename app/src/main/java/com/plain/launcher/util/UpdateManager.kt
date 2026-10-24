@@ -226,20 +226,43 @@ object UpdateManager {
         targetFile
     }
 
-    fun installApk(context: Context, apkFile: File, newVersionTag: String? = null) {
-        if (!newVersionTag.isNullOrBlank()) {
-            recordInstalledVersion(context, newVersionTag)
+    fun canInstallPackages(context: Context): Boolean {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            context.packageManager.canRequestPackageInstalls()
+        } else {
+            true
         }
+    }
+
+    fun requestInstallPermission(context: Context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            if (!context.packageManager.canRequestPackageInstalls()) {
+            try {
+                val intent = Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES).apply {
+                    data = Uri.parse("package:${context.packageName}")
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                context.startActivity(intent)
+            } catch (_: Exception) {
                 try {
-                    val intent = Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES).apply {
-                        data = Uri.parse("package:${context.packageName}")
+                    val fallbackIntent = Intent(Settings.ACTION_SECURITY_SETTINGS).apply {
                         addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                     }
-                    context.startActivity(intent)
+                    context.startActivity(fallbackIntent)
                 } catch (_: Exception) { }
             }
+        }
+    }
+
+    fun installApk(context: Context, apkFile: File, newVersionTag: String? = null): Boolean {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            if (!context.packageManager.canRequestPackageInstalls()) {
+                requestInstallPermission(context)
+                return false
+            }
+        }
+
+        if (!newVersionTag.isNullOrBlank()) {
+            recordInstalledVersion(context, newVersionTag)
         }
 
         val contentUri = FileProvider.getUriForFile(
@@ -254,5 +277,6 @@ object UpdateManager {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
         context.startActivity(installIntent)
+        return true
     }
 }
